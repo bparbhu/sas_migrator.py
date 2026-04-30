@@ -77,11 +77,12 @@ def _emit_data_step(node: DataStepNode, out: list[str], report: TranslationRepor
     source = node.source
     src_var = _var(source.name)
     _emit_source_if_needed(source.name, out, emitted_sources)
-    out.append(f"{target} = {src_var}")
     if source.keep:
-        out.append(f"{target} = {target}.select(*{source.keep!r})")
-    if source.drop:
-        out.append(f"{target} = {target}.drop(*{source.drop!r})")
+        out.append(f"{target} = {src_var}.select(*{source.keep!r})")
+    elif source.drop:
+        out.append(f"{target} = {src_var}.drop(*{source.drop!r})")
+    else:
+        out.append(f"{target} = {src_var}")
     where = source.where or node.where
     if where:
         out.append(f'{target} = {target}.filter(F.expr({_spark_expr(where)!r}))')
@@ -282,3 +283,4 @@ def emit_pyspark(program: ProgramIR) -> TranslationResult:
     code = "\n".join(out).strip() + "\n"
     validate_python(code, report)
     return TranslationResult(code=code, report=report)
+
