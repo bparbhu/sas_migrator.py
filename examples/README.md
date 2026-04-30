@@ -31,6 +31,54 @@ It exercises:
 - `PROC SQL`
 - `MERGE ... BY` with `IN=` flags
 
+
+## Easiest Folder-to-Folder Conversion
+
+Run this from the repository root to convert the bundled SAS example folder into
+mirrored Python output:
+
+```bash
+python scripts/convert_sas_folder.py
+```
+
+That default command reads:
+
+```text
+examples/input_repo
+```
+
+and writes:
+
+```text
+examples/generated_pandas
+```
+
+Use your own SAS folder and output folder:
+
+```bash
+python scripts/convert_sas_folder.py /path/to/sas_code /path/to/python_output --target pandas --strict
+```
+
+PowerShell example:
+
+```powershell
+.\examples\convert_folder_example.ps1 `
+  -SourceRoot "C:\path\to\sas_code" `
+  -OutputRoot "C:\path\to\python_output" `
+  -Target pandas `
+  -Strict
+```
+
+Bash example:
+
+```bash
+bash examples/convert_folder_example.sh /path/to/sas_code /path/to/python_output pandas
+```
+
+The output folder preserves the input folder structure and writes one `.py` file
+per `.sas` file, plus `.expanded.sas`, `.ir.json`, `.report.json`, and repository
+level planning reports.
+
 ## Generate Pandas Output
 
 ```bash

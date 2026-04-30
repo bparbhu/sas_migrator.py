@@ -57,8 +57,16 @@ Main command:
 sas-migrator translate-tree <source_root> <output_root>
 ```
 
-Examples:
+Quick folder-to-folder example:
 
+```bash
+python scripts/convert_sas_folder.py examples/input_repo examples/generated_pandas --target pandas --strict
+```
+
+That command recursively finds `.sas` files, preserves the same folder structure,
+and writes generated Python plus audit artifacts into the output folder.
+
+Examples:
 - `examples/input_repo` contains a small SAS repository with macros, DB librefs,
   DATA steps, PROC SQL, PROC SORT, PROC FREQ, PROC MEANS, and MERGE.
 - `examples/README.md` has pandas, PySpark, Databricks, Docker, and validation
@@ -184,6 +192,8 @@ See `docs/migration_program_readiness.md` for operating-model readiness guidance
 See `docs/equivalence_validation.md` for generated-code equivalence testing.
 See `docs/sas_data_ingestion.md` for raw SAS dataset conversion to Parquet.
 See `docs/saspy_lessons.md` for what can and cannot be reused from SASPy.
+See `docs/production_hardening.md` for the production hardening backlog.
+See `CONTRIBUTING.md` and `SECURITY.md` for contribution and vulnerability-reporting guidance.
 
 Important:
 This is a working migration factory. It is not a complete SAS compiler. Unsupported constructs are surfaced in reports so large migrations can be triaged and improved rule by rule.
