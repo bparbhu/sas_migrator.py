@@ -1,0 +1,18 @@
+{
+  "translated_count": 5,
+  "failed_count": 0,
+  "translated_files": [
+    "jobs\\merge\\job4.sas",
+    "jobs\\ops\\job2.sas",
+    "jobs\\sales\\job1.sas",
+    "jobs\\sql\\job3.sas",
+    "macros\\common.sas"
+  ],
+  "failed_files": [],
+  "files_with_issues": [],
+  "total_unsupported": 0,
+  "total_warnings": 0,
+  "total_errors": 0,
+  "strict": true,
+  "target": "pandas"
+}

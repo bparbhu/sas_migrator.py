@@ -1,0 +1,36 @@
+{
+  "nodes": [
+    {
+      "kind": "data_step",
+      "target": "work.merged",
+      "source": null,
+      "merge_sources": [
+        {
+          "name": "left_ds",
+          "keep": [],
+          "drop": [],
+          "where": null,
+          "rename": {},
+          "in_flag": "ina"
+        },
+        {
+          "name": "right_ds",
+          "keep": [],
+          "drop": [],
+          "where": null,
+          "rename": {},
+          "in_flag": "inb"
+        }
+      ],
+      "by": [
+        "id"
+      ],
+      "where": null,
+      "first_last_filter": null,
+      "retain_counters": [],
+      "assignments": [],
+      "conditional_assignments": [],
+      "merge_filter": "if ina and inb"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "proc_count": 4,
+  "unique_proc_count": 4,
+  "mappings": [
+    {
+      "proc": "freq",
+      "category": "descriptive_statistics",
+      "primary_package": "pandas",
+      "fallback_package": "scipy.stats",
+      "confidence": "high",
+      "notes": "Frequency tables; tests need scipy/statsmodels.",
+      "count": 1
+    },
+    {
+      "proc": "means",
+      "category": "descriptive_statistics",
+      "primary_package": "pandas",
+      "fallback_package": "scipy.stats",
+      "confidence": "high",
+      "notes": "Group summaries and descriptive statistics.",
+      "count": 1
+    },
+    {
+      "proc": "sort",
+      "category": "data_manipulation",
+      "primary_package": "pandas",
+      "fallback_package": "pyspark",
+      "confidence": "high",
+      "notes": "Sorting and BY preparation; Spark is a candidate for distributed data.",
+      "count": 1
+    },
+    {
+      "proc": "sql",
+      "category": "data_manipulation",
+      "primary_package": "pandas",
+      "fallback_package": "SQLAlchemy",
+      "confidence": "high",
+      "notes": "Table queries, joins, filters, and aggregations.",
+      "count": 1
+    }
+  ]
+}

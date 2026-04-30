@@ -1,0 +1,13 @@
+{
+  "nodes": [
+    {
+      "kind": "proc_sql",
+      "target": "work.customer_rollup",
+      "select": "customer_id, sum(amount) as total_amount, max(amount) as max_amount",
+      "from_clause": "sales_local",
+      "where": "region = 'East'",
+      "group_by": "customer_id",
+      "order_by": "customer_id"
+    }
+  ]
+}

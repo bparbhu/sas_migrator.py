@@ -1,0 +1,36 @@
+{
+  "nodes": [
+    {
+      "id": "load_sales",
+      "kind": "macro",
+      "file": "D:\\sas_migrator_v2\\examples\\input_repo\\macros\\common.sas"
+    },
+    {
+      "id": "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\merge\\job4.sas",
+      "kind": "file"
+    },
+    {
+      "id": "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\ops\\job2.sas",
+      "kind": "file"
+    },
+    {
+      "id": "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\sales\\job1.sas",
+      "kind": "file"
+    },
+    {
+      "id": "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\sql\\job3.sas",
+      "kind": "file"
+    },
+    {
+      "id": "D:\\sas_migrator_v2\\examples\\input_repo\\macros\\common.sas",
+      "kind": "file"
+    }
+  ],
+  "edges": [
+    {
+      "source": "load_sales",
+      "target": "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\sales\\job1.sas",
+      "kind": "macro_call"
+    }
+  ]
+}

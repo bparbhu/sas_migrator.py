@@ -1,0 +1,16 @@
+{
+  "source": "jobs\\ops\\job2.sas",
+  "db_librefs": {},
+  "unsupported_macro_items": [],
+  "ir_nodes": 2,
+  "target": "pandas",
+  "translation": {
+    "blocks_seen": 2,
+    "blocks_translated": 2,
+    "syntax_valid": true,
+    "unsupported_count": 0,
+    "warning_count": 0,
+    "error_count": 0,
+    "issues": []
+  }
+}

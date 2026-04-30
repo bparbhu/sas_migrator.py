@@ -1,0 +1,39 @@
+{
+  "nodes": [
+    {
+      "kind": "data_step",
+      "target": "work.daily",
+      "source": {
+        "name": "staging.orders",
+        "keep": [
+          "id",
+          "qty",
+          "price",
+          "status"
+        ],
+        "drop": [],
+        "where": "status = 'OPEN'",
+        "rename": {},
+        "in_flag": null
+      },
+      "merge_sources": [],
+      "by": [],
+      "where": null,
+      "first_last_filter": null,
+      "retain_counters": [],
+      "assignments": [
+        {
+          "target": "total",
+          "expression": "qty * price"
+        }
+      ],
+      "conditional_assignments": [],
+      "merge_filter": null
+    },
+    {
+      "kind": "proc",
+      "proc_name": "means",
+      "raw": "proc means data=work.daily noprint;\n  class status;\n  var total;\n  output out=work.daily_summary mean= sum=;\nrun;"
+    }
+  ]
+}

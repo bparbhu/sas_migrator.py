@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sas-migrator"
+version = "0.5.0"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=1.26,<3",
+  "pandas>=2.2,<3",
+  "pyarrow>=15,<23",
+  "SQLAlchemy>=2.0,<3",
+  "pydantic>=2.6,<3",
+  "networkx>=3.2,<4",
+]
+optional-dependencies.dev = ["pytest>=8,<9"]
+optional-dependencies.ci = [
+  "pytest>=8,<9",
+  "build>=1.2,<2",
+  "twine>=5,<7",
+]
+optional-dependencies.modeling = [
+  "scipy>=1.11,<2",
+  "statsmodels>=0.14,<1",
+  "scikit-learn>=1.4,<2",
+  "lifelines>=0.28,<1",
+]
+optional-dependencies.spark = ["pyspark>=3.5,<4"]
+optional-dependencies.sasdata = ["pyreadstat>=1.2,<2"]
+
+[project.scripts]
+sas-migrator = "sas_migrator.cli:main"
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["sas_migrator*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

@@ -1,0 +1,99 @@
+{
+  "root": "D:\\sas_migrator_v2\\examples\\input_repo",
+  "files": [
+    {
+      "file_path": "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\merge\\job4.sas",
+      "includes": [],
+      "db_librefs": {},
+      "called_macros": [],
+      "datasets_read": [
+        "in",
+        "ina",
+        "inb",
+        "left_ds",
+        "right_ds"
+      ],
+      "datasets_written": [
+        "work.merged"
+      ],
+      "procs_used": [],
+      "let_vars": {}
+    },
+    {
+      "file_path": "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\ops\\job2.sas",
+      "includes": [],
+      "db_librefs": {},
+      "called_macros": [],
+      "datasets_read": [
+        "staging.orders"
+      ],
+      "datasets_written": [
+        "work.daily"
+      ],
+      "procs_used": [
+        "means"
+      ],
+      "let_vars": {}
+    },
+    {
+      "file_path": "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\sales\\job1.sas",
+      "includes": [
+        "../../macros/common.sas"
+      ],
+      "db_librefs": {
+        "dw": "oracle"
+      },
+      "called_macros": [
+        "load_sales"
+      ],
+      "datasets_read": [],
+      "datasets_written": [],
+      "procs_used": [
+        "freq",
+        "sort"
+      ],
+      "let_vars": {}
+    },
+    {
+      "file_path": "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\sql\\job3.sas",
+      "includes": [],
+      "db_librefs": {},
+      "called_macros": [],
+      "datasets_read": [
+        "sales_local"
+      ],
+      "datasets_written": [
+        "work.customer_rollup"
+      ],
+      "procs_used": [
+        "sql"
+      ],
+      "let_vars": {}
+    },
+    {
+      "file_path": "D:\\sas_migrator_v2\\examples\\input_repo\\macros\\common.sas",
+      "includes": [],
+      "db_librefs": {},
+      "called_macros": [],
+      "datasets_read": [],
+      "datasets_written": [],
+      "procs_used": [],
+      "let_vars": {
+        "region_filter": "'East'"
+      }
+    }
+  ],
+  "macros": {
+    "load_sales": {
+      "params": [
+        "input",
+        "output"
+      ],
+      "body": "%if &region_filter = 'East' %then %do;\ndata &output;\n  set &input(keep=customer_id order_date amount region where=(region = &region_filter));\n  revenue = amount;\nrun;\n%end;\n%else %do;\ndata &output;\n  set &input(keep=customer_id order_date amount region);\n  revenue = amount;\nrun;\n%end;",
+      "file": "D:\\sas_migrator_v2\\examples\\input_repo\\macros\\common.sas"
+    }
+  },
+  "global_lets": {
+    "region_filter": "'East'"
+  }
+}

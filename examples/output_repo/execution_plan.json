@@ -1,0 +1,10 @@
+{
+  "is_dag": true,
+  "order": [
+    "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\merge\\job4.sas",
+    "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\ops\\job2.sas",
+    "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\sql\\job3.sas",
+    "D:\\sas_migrator_v2\\examples\\input_repo\\macros\\common.sas",
+    "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\sales\\job1.sas"
+  ]
+}

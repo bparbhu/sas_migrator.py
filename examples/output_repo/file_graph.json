@@ -1,0 +1,31 @@
+{
+  "nodes": [
+    {
+      "id": "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\merge\\job4.sas",
+      "kind": "file"
+    },
+    {
+      "id": "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\ops\\job2.sas",
+      "kind": "file"
+    },
+    {
+      "id": "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\sales\\job1.sas",
+      "kind": "file"
+    },
+    {
+      "id": "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\sql\\job3.sas",
+      "kind": "file"
+    },
+    {
+      "id": "D:\\sas_migrator_v2\\examples\\input_repo\\macros\\common.sas",
+      "kind": "file"
+    }
+  ],
+  "edges": [
+    {
+      "source": "D:\\sas_migrator_v2\\examples\\input_repo\\macros\\common.sas",
+      "target": "D:\\sas_migrator_v2\\examples\\input_repo\\jobs\\sales\\job1.sas",
+      "kind": "include"
+    }
+  ]
+}

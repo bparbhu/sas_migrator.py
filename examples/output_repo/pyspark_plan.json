@@ -1,0 +1,100 @@
+{
+  "spark_is_target_runtime": false,
+  "recommendation": "Use PySpark for high-volume table transformations, SQL-heavy pipelines, and distributed execution targets.",
+  "candidate_proc_count": 4,
+  "candidate_procs": [
+    {
+      "proc": "freq",
+      "count": 1
+    },
+    {
+      "proc": "means",
+      "count": 1
+    },
+    {
+      "proc": "sort",
+      "count": 1
+    },
+    {
+      "proc": "sql",
+      "count": 1
+    }
+  ],
+  "patterns": [
+    {
+      "sas_pattern": "DATA step assignment",
+      "pyspark_target": "withColumn",
+      "notes": "Create or replace columns with expressions."
+    },
+    {
+      "sas_pattern": "KEEP dataset option",
+      "pyspark_target": "select",
+      "notes": "Select output columns."
+    },
+    {
+      "sas_pattern": "DROP dataset option",
+      "pyspark_target": "drop",
+      "notes": "Drop output columns."
+    },
+    {
+      "sas_pattern": "WHERE / subsetting IF",
+      "pyspark_target": "filter / where",
+      "notes": "Filter rows with Column expressions."
+    },
+    {
+      "sas_pattern": "PROC SORT BY",
+      "pyspark_target": "orderBy / sort",
+      "notes": "Sort by one or more columns; specify asc/desc explicitly."
+    },
+    {
+      "sas_pattern": "PROC SORT NODUPKEY",
+      "pyspark_target": "dropDuplicates(by_cols)",
+      "notes": "Keep one row per BY key after deterministic ordering policy is defined."
+    },
+    {
+      "sas_pattern": "PROC FREQ",
+      "pyspark_target": "groupBy(...).count()",
+      "notes": "Frequency tables."
+    },
+    {
+      "sas_pattern": "PROC MEANS / SUMMARY",
+      "pyspark_target": "groupBy(...).agg(...)",
+      "notes": "Grouped numeric summaries."
+    },
+    {
+      "sas_pattern": "PROC CONTENTS",
+      "pyspark_target": "printSchema / dtypes / describe",
+      "notes": "Metadata inspection."
+    },
+    {
+      "sas_pattern": "DATA step SET append",
+      "pyspark_target": "unionByName",
+      "notes": "Use allowMissingColumns=True for different schemas."
+    },
+    {
+      "sas_pattern": "row number",
+      "pyspark_target": "row_number over Window",
+      "notes": "Use Window.orderBy or Window.partitionBy for BY-group row numbers."
+    },
+    {
+      "sas_pattern": "FIRST. / LAST.",
+      "pyspark_target": "row_number / count over Window",
+      "notes": "Window functions are needed for BY-group flags."
+    },
+    {
+      "sas_pattern": "PROC SQL",
+      "pyspark_target": "spark.sql or DataFrame API joins",
+      "notes": "Use Spark SQL for SQL-heavy code and DataFrame API for typed transformations."
+    },
+    {
+      "sas_pattern": "IF / IF-ELSE assignment",
+      "pyspark_target": "when(...).otherwise(...)",
+      "notes": "Conditional column creation."
+    },
+    {
+      "sas_pattern": "SELECT / WHEN",
+      "pyspark_target": "chained when(...).when(...).otherwise(...)",
+      "notes": "Categorization logic."
+    }
+  ]
+}

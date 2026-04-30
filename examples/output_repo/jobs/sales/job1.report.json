@@ -1,0 +1,18 @@
+{
+  "source": "jobs\\sales\\job1.sas",
+  "db_librefs": {
+    "dw": "oracle"
+  },
+  "unsupported_macro_items": [],
+  "ir_nodes": 3,
+  "target": "pandas",
+  "translation": {
+    "blocks_seen": 3,
+    "blocks_translated": 3,
+    "syntax_valid": true,
+    "unsupported_count": 0,
+    "warning_count": 0,
+    "error_count": 0,
+    "issues": []
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "nodes": [
+    {
+      "kind": "data_step",
+      "target": "sales_local",
+      "source": {
+        "name": "dw.sales",
+        "keep": [
+          "customer_id",
+          "order_date",
+          "amount",
+          "region"
+        ],
+        "drop": [],
+        "where": null,
+        "rename": {},
+        "in_flag": null
+      },
+      "merge_sources": [],
+      "by": [],
+      "where": null,
+      "first_last_filter": null,
+      "retain_counters": [],
+      "assignments": [
+        {
+          "target": "revenue",
+          "expression": "amount"
+        }
+      ],
+      "conditional_assignments": [],
+      "merge_filter": null
+    },
+    {
+      "kind": "proc",
+      "proc_name": "sort",
+      "raw": "proc sort data=sales_local out=sales_sorted;\n  by customer_id descending order_date;\nrun;"
+    },
+    {
+      "kind": "proc",
+      "proc_name": "freq",
+      "raw": "proc freq data=sales_sorted;\n  tables customer_id*region / out=sales_freq;\nrun;"
+    }
+  ]
+}

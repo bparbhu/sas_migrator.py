@@ -1,0 +1,16 @@
+{
+  "source": "macros\\common.sas",
+  "db_librefs": {},
+  "unsupported_macro_items": [],
+  "ir_nodes": 0,
+  "target": "pandas",
+  "translation": {
+    "blocks_seen": 0,
+    "blocks_translated": 0,
+    "syntax_valid": true,
+    "unsupported_count": 0,
+    "warning_count": 0,
+    "error_count": 0,
+    "issues": []
+  }
+}

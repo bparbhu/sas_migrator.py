@@ -1,0 +1,2 @@
+[console_scripts]
+sas-migrator = sas_migrator.cli:main
