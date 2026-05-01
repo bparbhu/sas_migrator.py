@@ -10,9 +10,10 @@ from .ir import (
     ProcNode,
     ProcSqlNode,
     ProgramIR,
+    SelectAssignment,
     UnsupportedNode,
 )
-from .translator import dataset_option_words, parse_merge_sources, split_blocks, statement_lines
+from .translator import dataset_option_words, parse_merge_sources, split_blocks, split_sas_csv, statement_lines
 
 
 def _dataset_ref(name: str, options: str = "", in_flag: str | None = None) -> DatasetRef:
@@ -50,10 +51,67 @@ def parse_data_step(block: str) -> DataStepNode | UnsupportedNode:
     retain_counters = []
     assignments = []
     conditional_assignments = []
+    select_assignments = []
+    output_rename = {}
     merge_filter = None
+    active_select = None
 
     for line in lines[1:]:
         if line.lower() == "run;":
+            continue
+        select_start = re.match(r"select\s*\((.+)\)\s*;", line, re.I)
+        if select_start:
+            active_select = {
+                "selector": select_start.group(1).strip(),
+                "target": None,
+                "cases": [],
+                "otherwise": None,
+            }
+            continue
+        if active_select:
+            when_match = re.match(
+                r"when\s*\((.*?)\)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+);",
+                line,
+                re.I,
+            )
+            if when_match:
+                active_select["target"] = active_select["target"] or when_match.group(2)
+                active_select["cases"].append((split_sas_csv(when_match.group(1)), when_match.group(3).strip()))
+                continue
+            otherwise_match = re.match(
+                r"otherwise\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+);",
+                line,
+                re.I,
+            )
+            if otherwise_match:
+                active_select["target"] = active_select["target"] or otherwise_match.group(1)
+                active_select["otherwise"] = otherwise_match.group(2).strip()
+                continue
+            if re.match(r"end\s*;", line, re.I):
+                if active_select["target"]:
+                    select_assignments.append(
+                        SelectAssignment(
+                            selector=active_select["selector"],
+                            target=active_select["target"],
+                            cases=active_select["cases"],
+                            otherwise=active_select["otherwise"],
+                        )
+                    )
+                active_select = None
+                continue
+        if re.match(r"length\s+.+;", line, re.I):
+            continue
+        rename_match = re.match(r"rename\s+(.+);", line, re.I)
+        if rename_match:
+            output_rename.update(
+                {
+                    old: new
+                    for old, new in re.findall(
+                        r"([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)",
+                        rename_match.group(1),
+                    )
+                }
+            )
             continue
         set_match = re.match(r"set\s+([A-Za-z_][A-Za-z0-9_.]*)(\((.*?)\))?\s*;", line, re.I)
         if set_match:
@@ -120,6 +178,8 @@ def parse_data_step(block: str) -> DataStepNode | UnsupportedNode:
         retain_counters=retain_counters,
         assignments=assignments,
         conditional_assignments=conditional_assignments,
+        select_assignments=select_assignments,
+        output_rename=output_rename,
         merge_filter=merge_filter,
     )
 

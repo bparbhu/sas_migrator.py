@@ -42,7 +42,7 @@ def analyze_sas_corpus(
         )
 
     translation_output = output_root / target
-    summary = translate_tree(source_root, translation_output, strict=strict, target=target)
+    summary = translate_tree(source_root, translation_output, strict=strict, target=target, audit_artifacts=True)
     manifest = build_manifest(source_root)
     ecosystem_plan = build_ecosystem_plan(manifest)
 

@@ -4,7 +4,6 @@ import re
 
 
 PANDAS_RUNTIME_HELPERS = [
-    "read_database_table",
     "sas_date_literal",
     "sas_day",
     "sas_first_last_flags",
@@ -23,6 +22,10 @@ def helper_is_used(code: str, helper: str) -> bool:
 def build_pandas_imports(body_lines: list[str]) -> list[str]:
     body = "\n".join(body_lines)
     imports = ["import pandas as pd"]
+    if "os.environ" in body:
+        imports.append("import os")
+    if helper_is_used(body, "create_engine"):
+        imports.append("from sqlalchemy import create_engine")
     used_helpers = [helper for helper in PANDAS_RUNTIME_HELPERS if helper_is_used(body, helper)]
     if used_helpers:
         imports.append("from sas_migrator.runtime import (")

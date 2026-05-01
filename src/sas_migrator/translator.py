@@ -4,7 +4,13 @@ from .diagnostics import TranslationReport, TranslationResult
 from .imports import build_pandas_imports
 from .validator import validate_python
 
+def strip_sas_comments(text: str) -> str:
+    text = re.sub(r"(?is)/\*.*?\*/", "\n", text)
+    text = re.sub(r"(?im)^\s*\*[^;\n]*(?:;|$)", "\n", text)
+    return text
+
 def split_blocks(text: str) -> list[str]:
+    text = strip_sas_comments(text)
     text = re.sub(r"(?is)\blibname\s+.*?;", "", text)
     text = re.sub(r"(?is)%include\s+['\"].*?['\"]\s*;", "", text)
     blocks, current = [], []
@@ -29,6 +35,7 @@ def split_blocks(text: str) -> list[str]:
     return blocks
 
 def statement_lines(block: str) -> list[str]:
+    block = strip_sas_comments(block)
     statements = []
     current = []
     quote = None
@@ -125,6 +132,51 @@ def split_sql_select(select_part: str) -> list[str]:
         parts.append(part)
     return parts
 
+def split_sas_csv(text: str) -> list[str]:
+    parts = []
+    current = []
+    quote = None
+    depth = 0
+    for ch in text:
+        if ch in {"'", '"'}:
+            quote = None if quote == ch else (ch if quote is None else quote)
+        elif quote is None:
+            if ch == "(":
+                depth += 1
+            elif ch == ")" and depth:
+                depth -= 1
+        if ch == "," and quote is None and depth == 0:
+            part = "".join(current).strip()
+            if part:
+                parts.append(part)
+            current = []
+        else:
+            current.append(ch)
+    part = "".join(current).strip()
+    if part:
+        parts.append(part)
+    return parts
+
+def sas_literal_to_python(value: str) -> str:
+    value = value.strip()
+    if value == ".":
+        return "pd.NA"
+    if re.match(r"^'.*'$|^\".*\"$", value):
+        return repr(value[1:-1])
+    if re.match(r"^[+-]?\d+(?:\.\d+)?$", value):
+        return value
+    return value
+
+def sas_literal_value(value: str):
+    value = value.strip()
+    if re.match(r"^'.*'$|^\".*\"$", value):
+        return value[1:-1]
+    if re.match(r"^[+-]?\d+$", value):
+        return int(value)
+    if re.match(r"^[+-]?\d+\.\d+$", value):
+        return float(value)
+    return value
+
 def strip_sql_aliases(expr: str) -> str:
     return re.sub(r"\b[A-Za-z_][A-Za-z0-9_]*\.", "", expr)
 
@@ -153,10 +205,15 @@ def db_read_lines(dataset: str, var_name: str, where: str | None, db_librefs: di
     if not libref or libref not in db_librefs:
         return None
     engine_name = db_librefs[libref]
+    engine_var = f"{libref.lower()}_engine"
+    env_var = f"SAS_MIGRATOR_DB_{libref.upper()}_URL"
     lines = []
-    lines.append(
-        f'{var_name} = read_database_table("{libref}", "{engine_name}", "{table}", {where!r})'
-    )
+    lines.append(f'{engine_var} = create_engine(os.environ[{env_var!r}])  # SAS LIBNAME {libref} {engine_name}')
+    if where:
+        sql = f"SELECT * FROM {table} WHERE {where}"
+        lines.append(f"{var_name} = pd.read_sql_query({sql!r}, con={engine_var})")
+    else:
+        lines.append(f"{var_name} = pd.read_sql_table({table!r}, con={engine_var})")
     return lines
 
 def parse_merge_sources(text: str):
@@ -312,18 +369,68 @@ def translate_with_report(sas_code: str, db_librefs: dict | None = None) -> Tran
                 continue
             target = m.group(1).replace(".", "_")
             source = None
-            keep, drop, where, rename = [], [], None, {}
-            assigns, if_else = [], []
+            keep, drop, where, rename, output_rename = [], [], None, {}, {}
+            assigns, if_else, select_assigns = [], [], []
             merge_sources, by_cols, merge_filter = [], [], None
             first_last_filter = None
             retain_vars: dict[str, str] = {}
             retain_increment = None
+            active_select = None
             for line in lines[1:]:
                 if line.lower() == "run;":
                     continue
+                select_start = re.match(r"select\s*\((.+)\)\s*;", line, re.I)
+                if select_start:
+                    active_select = {
+                        "selector": select_start.group(1).strip(),
+                        "target": None,
+                        "cases": [],
+                        "otherwise": None,
+                    }
+                    continue
+                if active_select:
+                    when_match = re.match(
+                        r"when\s*\((.*?)\)\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+);",
+                        line,
+                        re.I,
+                    )
+                    if when_match:
+                        values = split_sas_csv(when_match.group(1))
+                        active_select["target"] = active_select["target"] or when_match.group(2)
+                        active_select["cases"].append((values, when_match.group(3).strip()))
+                        continue
+                    otherwise_match = re.match(
+                        r"otherwise\s+([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.+);",
+                        line,
+                        re.I,
+                    )
+                    if otherwise_match:
+                        active_select["target"] = active_select["target"] or otherwise_match.group(1)
+                        active_select["otherwise"] = otherwise_match.group(2).strip()
+                        continue
+                    if re.match(r"end\s*;", line, re.I):
+                        if active_select["target"]:
+                            select_assigns.append(active_select)
+                        active_select = None
+                        continue
                 rm = re.match(r"retain\s+([A-Za-z_][A-Za-z0-9_]*)\s+(.+);", line, re.I)
                 if rm:
                     retain_vars[rm.group(1)] = rm.group(2).strip()
+                    continue
+                lenm = re.match(r"length\s+.+;", line, re.I)
+                if lenm:
+                    continue
+                renamem = re.match(r"rename\s+(.+);", line, re.I)
+                if renamem:
+                    output_rename.update(
+                        {
+                            old: new
+                            for old, new in re.findall(
+                                r"([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)",
+                                renamem.group(1),
+                            )
+                        }
+                    )
                     continue
                 sm = re.match(r"set\s+([A-Za-z_][A-Za-z0-9_.]*)(\((.*?)\))?\s*;", line, re.I)
                 if sm:
@@ -419,6 +526,26 @@ def translate_with_report(sas_code: str, db_librefs: dict | None = None) -> Tran
             for col, cond, yes, no in if_else:
                 out.append(f'{target}["{col}"] = {expr_to_pd(no, target)}')
                 out.append(f'{target}.loc[{expr_to_pd(cond, target)}, "{col}"] = {expr_to_pd(yes, target)}')
+            for select_assign in select_assigns:
+                selector = select_assign["selector"]
+                selector_expr = expr_to_pd(selector, target)
+                if selector_expr == f'{target}["{selector}"]':
+                    selector_expr = f'{target}["{selector}"]'
+                mapping = {}
+                for values, result_value in select_assign["cases"]:
+                    for value in values:
+                        mapping[sas_literal_value(value)] = sas_literal_value(result_value)
+                default = select_assign["otherwise"]
+                if default is None:
+                    out.append(
+                        f'{target}["{select_assign["target"]}"] = {selector_expr}.map({mapping!r})'
+                    )
+                else:
+                    out.append(
+                        f'{target}["{select_assign["target"]}"] = {selector_expr}.map({mapping!r}).fillna({sas_literal_to_python(default)})'
+                    )
+            if output_rename:
+                out.append(f"{target} = {target}.rename(columns={output_rename!r})")
             out.append("")
         elif low.startswith("proc sort"):
             lines = statement_lines(block)

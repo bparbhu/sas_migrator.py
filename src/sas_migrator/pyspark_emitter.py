@@ -4,7 +4,7 @@ import re
 
 from .diagnostics import TranslationReport, TranslationResult
 from .ir import DataStepNode, ProcNode, ProcSqlNode, ProgramIR, UnsupportedNode
-from .translator import statement_lines
+from .translator import sas_literal_value, statement_lines
 from .validator import validate_python
 
 
@@ -34,6 +34,20 @@ def _spark_expr(expr: str) -> str:
     expr = re.sub(r"\b[A-Za-z_][A-Za-z0-9_]*\.", "", expr)
     expr = re.sub(r"(?<![<>=!])=(?!=)", "=", expr)
     return expr
+
+
+def _spark_lit(value: str) -> str:
+    parsed = sas_literal_value(value)
+    if parsed == ".":
+        return "F.lit(None)"
+    return f"F.lit({parsed!r})"
+
+
+def _spark_selector(selector: str) -> str:
+    selector = selector.strip()
+    if re.match(r"^[A-Za-z_][A-Za-z0-9_]*$", selector):
+        return f'F.col("{selector}")'
+    return f"F.expr({_spark_expr(selector)!r})"
 
 
 def _emit_data_step(node: DataStepNode, out: list[str], report: TranslationReport, emitted_sources: set[str]) -> None:
@@ -114,6 +128,21 @@ def _emit_data_step(node: DataStepNode, out: list[str], report: TranslationRepor
             f'F.when(F.expr({_spark_expr(assignment.condition)!r}), F.expr({_spark_expr(assignment.when_true)!r}))'
             f'.otherwise(F.expr({_spark_expr(assignment.when_false)!r})))'
         )
+    for assignment in node.select_assignments:
+        selector = _spark_selector(assignment.selector)
+        expr = None
+        for values, result_value in assignment.cases:
+            cond_values = [sas_literal_value(value) for value in values]
+            cond = f"{selector}.isin({', '.join(repr(value) for value in cond_values)})"
+            branch = f"F.when({cond}, {_spark_lit(result_value)})"
+            expr = branch if expr is None else f"{expr}.when({cond}, {_spark_lit(result_value)})"
+        if expr is None:
+            expr = _spark_lit(assignment.otherwise or ".")
+        elif assignment.otherwise is not None:
+            expr = f"{expr}.otherwise({_spark_lit(assignment.otherwise)})"
+        out.append(f'{target} = {target}.withColumn("{assignment.target}", {expr})')
+    for old, new in node.output_rename.items():
+        out.append(f'{target} = {target}.withColumnRenamed("{old}", "{new}")')
     report.blocks_translated += 1
 
 

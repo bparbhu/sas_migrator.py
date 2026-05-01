@@ -21,8 +21,21 @@ def test_translate_tree(tmp_path: Path):
     assert (out / "jobs" / "sales" / "job1.py").exists()
     assert (out / "jobs" / "ops" / "job2.py").exists()
     assert (out / "jobs" / "sql" / "job3.py").exists()
-    assert (out / "jobs" / "sql" / "job3.ir.json").exists()
     assert (out / "jobs" / "merge" / "job4.py").exists()
+    assert (out / "graphviz" / "file_graph.svg").exists()
+    assert (out / "graphviz" / "macro_graph.svg").exists()
+    assert (out / "graphviz" / "migration_graph.svg").exists()
+    assert not (out / "summary.json").exists()
+    assert not (out / "jobs" / "sales" / "job1.report.json").exists()
+    assert summary["total_errors"] == 0
+
+def test_translate_tree_audit_artifacts_are_opt_in(tmp_path: Path):
+    source = Path("examples/input_repo")
+    out = tmp_path / "output"
+    summary = translate_tree(source, out, audit_artifacts=True)
+    assert summary["translated_count"] >= 4
+    assert (out / "jobs" / "sales" / "job1.py").exists()
+    assert (out / "jobs" / "sql" / "job3.ir.json").exists()
     assert (out / "execution_plan.json").exists()
     assert (out / "parallel_batches.json").exists()
     assert (out / "migration_graph.json").exists()
@@ -30,6 +43,7 @@ def test_translate_tree(tmp_path: Path):
     assert (out / "impact_report.json").exists()
     assert (out / "graphviz_artifacts.json").exists()
     assert (out / "graphviz" / "migration_graph.dot").exists()
+    assert (out / "graphviz" / "migration_graph.svg").exists()
     assert (out / "ecosystem_plan.json").exists()
     assert (out / "pyspark_plan.json").exists()
     assert (out / "databricks_plan.json").exists()
@@ -45,18 +59,49 @@ def test_translator_reports_python_syntax_and_single_line_data_step():
     assert 'work_out = work_in.copy()' in result.code
     assert 'work_out["total"] = work_out["qty"] * work_out["price"]' in result.code
 
+def test_data_step_select_when_and_comments_translate_to_pandas():
+    result = translate_with_report(
+        """
+        /**********************
+        Header comment before real SAS code.
+        **********************/
+        data work.cars_orig_country;
+          set sashelp.cars(keep=Make Model Origin);
+          length Origin_Country $25;
+          select (Make);
+            when ('Acura') Origin_Country = 'Japan';
+            when ('Honda', 'Toyota') Origin_Country = 'Japan';
+            when ('Hyundai') Origin_Country = 'South Korea';
+            otherwise Origin_Country = '';
+          end;
+          rename Origin = Origin_Region;
+        run;
+        """
+    )
+    assert result.report.syntax_valid is True
+    assert result.report.unsupported_count == 0
+    assert "work_cars_orig_country = sashelp_cars.loc[:, ['Make', 'Model', 'Origin']].copy()" in result.code
+    assert 'work_cars_orig_country["Origin_Country"] = work_cars_orig_country["Make"].map' in result.code
+    assert "'Toyota': 'Japan'" in result.code
+    assert ".fillna('')" in result.code
+    assert "work_cars_orig_country = work_cars_orig_country.rename(columns={'Origin': 'Origin_Region'})" in result.code
+
 def test_translator_reports_unsupported_blocks():
     result = translate_with_report("proc mystery data=x; run;")
     assert result.report.syntax_valid is True
     assert result.report.unsupported_count == 1
     assert result.report.issues[0].code == "unsupported_block"
 
-def test_database_reads_use_runtime_sqlalchemy_helper():
+def test_database_reads_emit_explicit_sqlalchemy_code():
     result = translate_with_report(
         "libname dw oracle; data local; set dw.sales(where=(region = 'East')); run;",
         {"dw": "oracle"},
     )
-    assert 'read_database_table("dw", "oracle", "sales", "region = \'East\'")' in result.code
+    assert "import os" in result.code
+    assert "from sqlalchemy import create_engine" in result.code
+    assert 'dw_engine = create_engine(os.environ[\'SAS_MIGRATOR_DB_DW_URL\'])' in result.code
+    assert 'dw_sales = pd.read_sql_query("SELECT * FROM sales WHERE region = \'East\'", con=dw_engine)' in result.code
+    assert "read_database_table" not in result.code
 
 def test_first_last_flags_preserve_sas_tie_order():
     df = pd.DataFrame(
@@ -262,7 +307,6 @@ def test_pandas_imports_include_only_used_runtime_helpers():
     assert "    sas_first_last_flags," in result.code
     assert "    sas_year," in result.code
     assert "    sas_style_merge," not in result.code
-    assert "    read_database_table," not in result.code
 
 def test_import_manager_detects_runtime_helpers():
     imports = build_pandas_imports(["x = sas_style_merge([])", "y = sas_month(x)"])

@@ -15,7 +15,7 @@ def validate_fixture(
     target: str = "pandas",
     strict: bool = True,
 ) -> dict:
-    summary = translate_tree(source_root, output_root, target=target, strict=strict)
+    summary = translate_tree(source_root, output_root, target=target, strict=strict, audit_artifacts=True)
     generated_files = sorted((output_root / "jobs").glob("*.py"))
     compile_errors = []
     for path in generated_files:

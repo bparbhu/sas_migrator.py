@@ -60,6 +60,11 @@ def main():
     tree.add_argument("output_root")
     tree.add_argument("--target", choices=["pandas", "pyspark", "databricks"], default="pandas")
     tree.add_argument("--strict", action="store_true", help="Return a non-zero exit code when unsupported items are found.")
+    tree.add_argument(
+        "--audit-artifacts",
+        action="store_true",
+        help="Also write manifests, JSON reports, expanded SAS, IR, and DOT files for engineering review.",
+    )
 
     validate = sub.add_parser("validate-fixture")
     validate.add_argument("source_root")
@@ -124,9 +129,16 @@ def main():
         save_json(build_databricks_plan(manifest), Path(args.output))
         print(f"Saved Databricks plan to {args.output}")
     elif args.command == "translate-tree":
-        summary = translate_tree(Path(args.source_root), Path(args.output_root), strict=args.strict, target=args.target)
+        summary = translate_tree(
+            Path(args.source_root),
+            Path(args.output_root),
+            strict=args.strict,
+            target=args.target,
+            audit_artifacts=args.audit_artifacts,
+        )
         print(f'Translated {summary["translated_count"]} files to {summary["target"]}')
         print(f'Unsupported items: {summary["total_unsupported"]}')
+        print(f'Graphviz SVGs: {Path(args.output_root) / "graphviz"}')
         if summary["failed_count"]:
             print(f'Failed {summary["failed_count"]} files')
             sys.exit(1)

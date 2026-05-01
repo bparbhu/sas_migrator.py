@@ -15,31 +15,82 @@ from .sas_parser import parse_sas_to_ir
 from .spark_registry import build_spark_plan
 from .translator import translate_with_report
 
-def translate_tree(source_root: Path, output_root: Path, strict: bool = False, target: str = "pandas") -> dict:
+ROOT_AUDIT_FILES = {
+    "manifest.json",
+    "file_graph.json",
+    "macro_graph.json",
+    "migration_graph.json",
+    "execution_plan.json",
+    "parallel_batches.json",
+    "graph_insights.json",
+    "impact_report.json",
+    "graphviz_artifacts.json",
+    "ecosystem_plan.json",
+    "pyspark_plan.json",
+    "databricks_plan.json",
+    "migration_readiness.json",
+    "summary.json",
+}
+
+
+def _remove_clean_delivery_noise(output_root: Path) -> None:
+    for name in ROOT_AUDIT_FILES:
+        path = output_root / name
+        if path.exists():
+            path.unlink()
+    for pattern in ("*.expanded.sas", "*.ir.json", "*.report.json"):
+        for path in output_root.rglob(pattern):
+            path.unlink()
+    graphviz_dir = output_root / "graphviz"
+    if graphviz_dir.exists():
+        for path in graphviz_dir.glob("*.dot"):
+            path.unlink()
+        for path in graphviz_dir.iterdir():
+            if path.is_file() and path.suffix == "":
+                path.unlink()
+
+
+def translate_tree(
+    source_root: Path,
+    output_root: Path,
+    strict: bool = False,
+    target: str = "pandas",
+    audit_artifacts: bool = False,
+) -> dict:
     if target not in {"pandas", "pyspark", "databricks"}:
         raise ValueError("target must be 'pandas', 'pyspark', or 'databricks'")
     source_root = source_root.resolve()
     output_root = output_root.resolve()
     output_root.mkdir(parents=True, exist_ok=True)
+    if not audit_artifacts:
+        _remove_clean_delivery_noise(output_root)
 
     manifest = build_manifest(source_root)
-    save_manifest(manifest, output_root / "manifest.json")
-
     file_graph = build_file_graph(manifest)
     macro_graph = build_macro_graph(manifest)
     migration_graph = build_migration_graph(manifest)
-    save_json(graph_to_json(file_graph), output_root / "file_graph.json")
-    save_json(graph_to_json(macro_graph), output_root / "macro_graph.json")
-    save_json(graph_to_json(migration_graph), output_root / "migration_graph.json")
-    save_json(topological_execution_plan(file_graph), output_root / "execution_plan.json")
-    save_json(parallel_execution_batches(file_graph), output_root / "parallel_batches.json")
-    save_json(migration_graph_insights(migration_graph, file_graph), output_root / "graph_insights.json")
-    save_json(impact_report(migration_graph), output_root / "impact_report.json")
-    save_json(write_translation_visualizations(output_root, file_graph, macro_graph, migration_graph), output_root / "graphviz_artifacts.json")
-    save_json(build_ecosystem_plan(manifest), output_root / "ecosystem_plan.json")
-    save_json(build_spark_plan(manifest), output_root / "pyspark_plan.json")
-    save_json(build_databricks_plan(manifest), output_root / "databricks_plan.json")
-    save_json(build_migration_readiness(Path.cwd(), manifest, strict), output_root / "migration_readiness.json")
+    graphviz_artifacts = write_translation_visualizations(
+        output_root,
+        file_graph,
+        macro_graph,
+        migration_graph,
+        include_dot=audit_artifacts,
+    )
+
+    if audit_artifacts:
+        save_manifest(manifest, output_root / "manifest.json")
+        save_json(graph_to_json(file_graph), output_root / "file_graph.json")
+        save_json(graph_to_json(macro_graph), output_root / "macro_graph.json")
+        save_json(graph_to_json(migration_graph), output_root / "migration_graph.json")
+        save_json(topological_execution_plan(file_graph), output_root / "execution_plan.json")
+        save_json(parallel_execution_batches(file_graph), output_root / "parallel_batches.json")
+        save_json(migration_graph_insights(migration_graph, file_graph), output_root / "graph_insights.json")
+        save_json(impact_report(migration_graph), output_root / "impact_report.json")
+        save_json(graphviz_artifacts, output_root / "graphviz_artifacts.json")
+        save_json(build_ecosystem_plan(manifest), output_root / "ecosystem_plan.json")
+        save_json(build_spark_plan(manifest), output_root / "pyspark_plan.json")
+        save_json(build_databricks_plan(manifest), output_root / "databricks_plan.json")
+        save_json(build_migration_readiness(Path.cwd(), manifest, strict), output_root / "migration_readiness.json")
 
     translated, failed, files_with_issues = [], [], []
     total_unsupported = 0
@@ -61,16 +112,17 @@ def translate_tree(source_root: Path, output_root: Path, strict: bool = False, t
                 result = translate_with_report(expanded, bundle["db_librefs"])
             py_code = result.code
             (target_dir / f"{rel.stem}.py").write_text(py_code, encoding="utf-8")
-            (target_dir / f"{rel.stem}.expanded.sas").write_text(expanded, encoding="utf-8")
-            (target_dir / f"{rel.stem}.ir.json").write_text(json.dumps(ir.to_dict(), indent=2), encoding="utf-8")
-            (target_dir / f"{rel.stem}.report.json").write_text(json.dumps({
-                "source": str(rel),
-                "db_librefs": bundle["db_librefs"],
-                "unsupported_macro_items": unsupported,
-                "ir_nodes": len(ir.nodes),
-                "target": target,
-                "translation": result.report.to_dict(),
-            }, indent=2), encoding="utf-8")
+            if audit_artifacts:
+                (target_dir / f"{rel.stem}.expanded.sas").write_text(expanded, encoding="utf-8")
+                (target_dir / f"{rel.stem}.ir.json").write_text(json.dumps(ir.to_dict(), indent=2), encoding="utf-8")
+                (target_dir / f"{rel.stem}.report.json").write_text(json.dumps({
+                    "source": str(rel),
+                    "db_librefs": bundle["db_librefs"],
+                    "unsupported_macro_items": unsupported,
+                    "ir_nodes": len(ir.nodes),
+                    "target": target,
+                    "translation": result.report.to_dict(),
+                }, indent=2), encoding="utf-8")
             translated.append(str(rel))
             total_unsupported += result.report.unsupported_count + len(unsupported)
             total_warnings += result.report.warning_count
@@ -99,6 +151,9 @@ def translate_tree(source_root: Path, output_root: Path, strict: bool = False, t
         "total_errors": total_errors,
         "strict": strict,
         "target": target,
+        "graphviz_artifacts": graphviz_artifacts,
+        "audit_artifacts": audit_artifacts,
     }
-    (output_root / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    if audit_artifacts:
+        (output_root / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     return summary

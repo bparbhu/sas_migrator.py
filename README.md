@@ -64,7 +64,8 @@ python scripts/convert_sas_folder.py examples/input_repo examples/generated_pand
 ```
 
 That command recursively finds `.sas` files, preserves the same folder structure,
-and writes generated Python plus audit artifacts into the output folder, including Graphviz DOT/SVG migration graph visualizations.
+and writes a clean delivery folder: generated Python files plus Graphviz SVG
+visualizations in `graphviz/`.
 
 Examples:
 - `examples/input_repo` contains a small SAS repository with macros, DB librefs,
@@ -86,15 +87,24 @@ the supported IR and PROC patterns. `databricks` emits PySpark code with
 Databricks notebook/catalog/checkpoint scaffolding.
 
 It walks the source tree recursively, preserves the same relative folder structure in the output tree,
-and writes translated `.py` files plus sidecar `.expanded.sas`, `.ir.json`, and `.report.json` files.
+and writes translated `.py` files plus Graphviz SVG visualizations. The default
+output is intentionally user-facing and does not include sidecar reports.
+
+For engineering review, add audit artifacts:
+```bash
+sas-migrator translate-tree <source_root> <output_root> --target pandas --audit-artifacts
+```
+
+Audit mode also writes `.expanded.sas`, `.ir.json`, `.report.json`, manifests,
+planning JSON, and Graphviz DOT files.
 
 For CI or large batch migrations, use strict mode:
 ```bash
 sas-migrator translate-tree <source_root> <output_root> --strict
 ```
 
-Strict mode still writes artifacts, but exits non-zero when unsupported SAS or macro items are found.
-Every file-level report includes:
+Strict mode exits non-zero when unsupported SAS or macro items are found. In
+audit mode, every file-level report includes:
 - macro expansion issues
 - parsed IR node counts
 - translated block counts
@@ -173,7 +183,7 @@ Supported:
 - `PROC TRANSPOSE`
 - first-pass `PROC SQL`
 - `PROC SQL` left/right/inner/full joins with aliases, `alias.*`, simple `CASE WHEN ... THEN ... ELSE ... END AS`, and SAS missing checks such as `col = .`
-- DB-backed `LIBNAME` detection with SQLAlchemy stubs
+- DB-backed `LIBNAME` detection with explicit SQLAlchemy generated code
 - SAS date helpers for `YEAR`, `MONTH`, `DAY`, and date literals like `'15JAN2023'D`
 - statistical validation helpers for tolerances, listwise deletion, and SAS-style ANOVA type defaults
 

@@ -1,5 +1,4 @@
 import importlib.util
-import json
 import sys
 from pathlib import Path
 
@@ -42,13 +41,11 @@ def test_convert_sas_folder_script_writes_mirrored_python_tree(tmp_path: Path, m
     assert (output_root / "jobs" / "sql" / "job3.py").exists()
     assert (output_root / "jobs" / "merge" / "job4.py").exists()
     assert (output_root / "macros" / "common.py").exists()
-    assert (output_root / "jobs" / "sales" / "job1.report.json").exists()
-
-    summary = json.loads((output_root / "summary.json").read_text(encoding="utf-8"))
-    assert summary["target"] == "pandas"
-    assert summary["translated_count"] == 5
-    assert summary["failed_count"] == 0
-    assert summary["total_unsupported"] == 0
+    assert (output_root / "graphviz" / "file_graph.svg").exists()
+    assert (output_root / "graphviz" / "macro_graph.svg").exists()
+    assert (output_root / "graphviz" / "migration_graph.svg").exists()
+    assert not (output_root / "jobs" / "sales" / "job1.report.json").exists()
+    assert not (output_root / "summary.json").exists()
 
 
 def test_convert_sas_folder_script_returns_error_for_missing_source(tmp_path: Path, monkeypatch, capsys):

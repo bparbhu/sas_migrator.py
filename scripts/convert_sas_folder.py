@@ -38,7 +38,7 @@ def parse_args() -> argparse.Namespace:
         "output_root",
         nargs="?",
         default=str(REPO_ROOT / "examples" / "generated_pandas"),
-        help="Folder where generated Python and audit artifacts will be written.",
+        help="Folder where generated Python files and Graphviz SVGs will be written.",
     )
     parser.add_argument(
         "--target",
@@ -50,6 +50,11 @@ def parse_args() -> argparse.Namespace:
         "--strict",
         action="store_true",
         help="Exit non-zero if unsupported SAS constructs are found.",
+    )
+    parser.add_argument(
+        "--audit-artifacts",
+        action="store_true",
+        help="Also write JSON reports, expanded SAS, IR, and DOT files for engineering review.",
     )
     return parser.parse_args()
 
@@ -63,7 +68,13 @@ def main() -> int:
         print(f"Source folder does not exist: {source_root}", file=sys.stderr)
         return 2
 
-    summary = translate_tree(source_root, output_root, strict=args.strict, target=args.target)
+    summary = translate_tree(
+        source_root,
+        output_root,
+        strict=args.strict,
+        target=args.target,
+        audit_artifacts=args.audit_artifacts,
+    )
 
     print("SAS folder conversion complete")
     print(f"  Source: {source_root}")
@@ -73,7 +84,9 @@ def main() -> int:
     print(f"  Unsupported items: {summary['total_unsupported']}")
     print(f"  Warnings: {summary['total_warnings']}")
     print(f"  Failed files: {summary['failed_count']}")
-    print(f"  Summary report: {output_root / 'summary.json'}")
+    print(f"  Graphviz SVGs: {output_root / 'graphviz'}")
+    if args.audit_artifacts:
+        print(f"  Summary report: {output_root / 'summary.json'}")
 
     if summary["failed_count"]:
         print(json.dumps(summary["failed_files"], indent=2))

@@ -29,6 +29,14 @@ class ConditionalAssignment:
 
 
 @dataclass(frozen=True)
+class SelectAssignment:
+    selector: str
+    target: str
+    cases: list[tuple[list[str], str]] = field(default_factory=list)
+    otherwise: str | None = None
+
+
+@dataclass(frozen=True)
 class DataStepNode:
     kind: Literal["data_step"] = "data_step"
     target: str = ""
@@ -40,6 +48,8 @@ class DataStepNode:
     retain_counters: list[tuple[str, int]] = field(default_factory=list)
     assignments: list[Assignment] = field(default_factory=list)
     conditional_assignments: list[ConditionalAssignment] = field(default_factory=list)
+    select_assignments: list[SelectAssignment] = field(default_factory=list)
+    output_rename: dict[str, str] = field(default_factory=dict)
     merge_filter: str | None = None
 
 

@@ -76,8 +76,8 @@ bash examples/convert_folder_example.sh /path/to/sas_code /path/to/python_output
 ```
 
 The output folder preserves the input folder structure and writes one `.py` file
-per `.sas` file, plus `.expanded.sas`, `.ir.json`, `.report.json`, and repository
-level planning reports, including NetworkX graph artifacts for lineage, impact analysis, and parallel execution batches.
+per `.sas` file. It also writes Graphviz SVG files to `graphviz/` so reviewers
+can inspect lineage and migration structure without digging through JSON.
 
 ## Generate Pandas Output
 
@@ -85,21 +85,22 @@ level planning reports, including NetworkX graph artifacts for lineage, impact a
 sas-migrator translate-tree examples/input_repo examples/generated_pandas --target pandas --strict
 ```
 
-Expected artifacts include mirrored Python files plus audit sidecars:
+Expected delivery output includes mirrored Python files plus SVG visualizations:
 
 ```text
 examples/generated_pandas/
+  graphviz/file_graph.svg
+  graphviz/macro_graph.svg
+  graphviz/migration_graph.svg
   jobs/sales/job1.py
-  jobs/sales/job1.expanded.sas
-  jobs/sales/job1.ir.json
-  jobs/sales/job1.report.json
-  manifest.json
-  file_graph.json
-  macro_graph.json
-  execution_plan.json
-  ecosystem_plan.json
-  migration_readiness.json
+  jobs/ops/job2.py
+  jobs/sql/job3.py
+  jobs/merge/job4.py
+  macros/common.py
 ```
+
+For engineering/debug output, add `--audit-artifacts`. That also writes expanded
+SAS, IR JSON, file-level reports, planning JSON, and Graphviz DOT files.
 
 ## Generate PySpark Output
 
