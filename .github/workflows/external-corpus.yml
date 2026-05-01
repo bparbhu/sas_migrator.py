@@ -47,7 +47,7 @@ jobs:
             --large-file-threshold 1000
 
       - name: Upload corpus artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: sas-corpus-${{ inputs.target }}
           path: |
