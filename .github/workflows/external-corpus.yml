@@ -1,0 +1,60 @@
+name: External SAS Corpus
+
+on:
+  workflow_dispatch:
+    inputs:
+      corpus_url:
+        description: "Zip URL for a SAS corpus"
+        required: false
+        default: "https://github.com/sassoftware/sas-code-examples/archive/refs/heads/main.zip"
+      target:
+        description: "Translation target"
+        required: false
+        default: "pandas"
+        type: choice
+        options:
+          - pandas
+          - pyspark
+          - databricks
+
+jobs:
+  corpus:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Download SAS examples corpus
+        run: |
+          python scripts/download_sas_code_examples.py external_corpora/sas-code-examples --url "${{ inputs.corpus_url }}" --overwrite
+
+      - name: Run corpus test
+        run: |
+          sas-migrator corpus-test external_corpora/sas-code-examples \
+            --output-dir corpus_output \
+            --target "${{ inputs.target }}" \
+            --large-file-threshold 1000
+
+      - name: Upload corpus artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sas-corpus-${{ inputs.target }}
+          path: |
+            corpus_output/corpus_report.json
+            corpus_output/${{ inputs.target }}/summary.json
+            corpus_output/${{ inputs.target }}/manifest.json
+            corpus_output/${{ inputs.target }}/migration_graph.json
+            corpus_output/${{ inputs.target }}/graph_insights.json
+            corpus_output/${{ inputs.target }}/impact_report.json
+            corpus_output/${{ inputs.target }}/parallel_batches.json

@@ -4,7 +4,8 @@ from .crawler import find_sas_files
 from .databricks_emitter import emit_databricks
 from .databricks_plan import build_databricks_plan
 from .manifest import build_manifest, save_manifest
-from .graph import build_file_graph, build_macro_graph, topological_execution_plan, graph_to_json, save_json
+from .graph import build_file_graph, build_macro_graph, build_migration_graph, graph_to_json, impact_report, migration_graph_insights, parallel_execution_batches, topological_execution_plan, save_json
+from .graphviz_export import write_translation_visualizations
 from .bundler import build_bundle
 from .macro_engine import expand
 from .proc_registry import build_ecosystem_plan
@@ -26,9 +27,15 @@ def translate_tree(source_root: Path, output_root: Path, strict: bool = False, t
 
     file_graph = build_file_graph(manifest)
     macro_graph = build_macro_graph(manifest)
+    migration_graph = build_migration_graph(manifest)
     save_json(graph_to_json(file_graph), output_root / "file_graph.json")
     save_json(graph_to_json(macro_graph), output_root / "macro_graph.json")
+    save_json(graph_to_json(migration_graph), output_root / "migration_graph.json")
     save_json(topological_execution_plan(file_graph), output_root / "execution_plan.json")
+    save_json(parallel_execution_batches(file_graph), output_root / "parallel_batches.json")
+    save_json(migration_graph_insights(migration_graph, file_graph), output_root / "graph_insights.json")
+    save_json(impact_report(migration_graph), output_root / "impact_report.json")
+    save_json(write_translation_visualizations(output_root, file_graph, macro_graph, migration_graph), output_root / "graphviz_artifacts.json")
     save_json(build_ecosystem_plan(manifest), output_root / "ecosystem_plan.json")
     save_json(build_spark_plan(manifest), output_root / "pyspark_plan.json")
     save_json(build_databricks_plan(manifest), output_root / "databricks_plan.json")

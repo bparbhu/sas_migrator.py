@@ -3,6 +3,7 @@ import json
 import re
 from pathlib import Path
 from .crawler import find_sas_files
+from .source_io import read_sas_text
 
 DB_ENGINES = {"odbc","oledb","oracle","sqlsvr","postgres","postgresql","teradata","db2","snowflake","redshift","mysql","sqlite"}
 SAS_COMMENT_BLOCK = re.compile(r"/\*.*?\*/", re.DOTALL)
@@ -14,6 +15,7 @@ MACRO_CALL_RE = re.compile(r'%([A-Za-z_][A-Za-z0-9_]*)\s*(?:\((.*?)\))?\s*;', re
 DATA_STEP_RE = re.compile(r'\bdata\s+([A-Za-z_][A-Za-z0-9_.]*)\s*;', re.IGNORECASE)
 SET_RE = re.compile(r'\bset\s+([A-Za-z_][A-Za-z0-9_.]*)', re.IGNORECASE)
 MERGE_RE = re.compile(r'\bmerge\s+(.+?);', re.IGNORECASE)
+MERGE_SOURCE_RE = re.compile(r'([A-Za-z_][A-Za-z0-9_.]*)(?:\s*\([^)]*\))?', re.IGNORECASE)
 PROC_RE = re.compile(r'\bproc\s+([A-Za-z_][A-Za-z0-9_]*)', re.IGNORECASE)
 CREATE_TABLE_RE = re.compile(r'\bcreate\s+table\s+([A-Za-z_][A-Za-z0-9_.]*)', re.IGNORECASE)
 FROM_RE = re.compile(r'\bfrom\s+([A-Za-z_][A-Za-z0-9_.]*)', re.IGNORECASE)
@@ -29,7 +31,7 @@ def build_manifest(root: Path) -> dict:
     macros = {}
     global_lets = {}
     for path in find_sas_files(root):
-        text = strip_comments(path.read_text(encoding="utf-8", errors="ignore"))
+        text = strip_comments(read_sas_text(path))
         includes = INCLUDE_RE.findall(text)
         db_librefs = {}
         for m in LIBNAME_DB_RE.finditer(text):
@@ -55,7 +57,7 @@ def build_manifest(root: Path) -> dict:
         datasets_written += [m.group(1) for m in CREATE_TABLE_RE.finditer(text)]
         datasets_read = [m.group(1) for m in SET_RE.finditer(text)]
         for m in MERGE_RE.finditer(text):
-            datasets_read.extend(re.findall(r'([A-Za-z_][A-Za-z0-9_.]*)', m.group(1)))
+            datasets_read.extend(source.group(1) for source in MERGE_SOURCE_RE.finditer(m.group(1)))
         datasets_read += [m.group(1) for m in FROM_RE.finditer(text)]
         files.append({
             "file_path": str(path),

@@ -1,16 +1,30 @@
 import argparse
 import sys
 from pathlib import Path
-from .manifest import build_manifest, save_manifest
+
+from .corpus import analyze_sas_corpus
 from .databricks_plan import build_databricks_plan
 from .data_io import convert_sas_folder_to_parquet
-from .graph import build_file_graph, build_macro_graph, topological_execution_plan, graph_to_json, save_json
+from .graph import (
+    build_file_graph,
+    build_macro_graph,
+    build_migration_graph,
+    graph_to_json,
+    impact_report,
+    migration_graph_insights,
+    parallel_execution_batches,
+    save_json,
+    topological_execution_plan,
+)
+from .graphviz_export import write_translation_visualizations
+from .manifest import build_manifest, save_manifest
 from .pipeline import translate_tree
 from .proc_registry import build_ecosystem_plan
 from .readiness import build_migration_readiness
-from .spark_registry import build_spark_plan
 from .saspy_mapping import saspy_mapping_summary
+from .spark_registry import build_spark_plan
 from .validation_runner import validate_fixture
+
 
 def main():
     parser = argparse.ArgumentParser(prog="sas-migrator")
@@ -62,6 +76,14 @@ def main():
     saspy = sub.add_parser("saspy-lessons")
     saspy.add_argument("--output", required=True)
 
+    corpus = sub.add_parser("corpus-test")
+    corpus.add_argument("source_root")
+    corpus.add_argument("--output-dir", required=True)
+    corpus.add_argument("--target", choices=["pandas", "pyspark", "databricks"], default="pandas")
+    corpus.add_argument("--strict", action="store_true")
+    corpus.add_argument("--large-file-threshold", type=int, default=1000)
+    corpus.add_argument("--fail-on-errors", action="store_true")
+
     args = parser.parse_args()
     if args.command == "crawl":
         manifest = build_manifest(Path(args.root))
@@ -72,9 +94,17 @@ def main():
         out = Path(args.output_dir)
         out.mkdir(parents=True, exist_ok=True)
         manifest = build_manifest(root)
-        save_json(graph_to_json(build_file_graph(manifest)), out / "file_graph.json")
-        save_json(graph_to_json(build_macro_graph(manifest)), out / "macro_graph.json")
-        save_json(topological_execution_plan(build_file_graph(manifest)), out / "execution_plan.json")
+        file_graph = build_file_graph(manifest)
+        macro_graph = build_macro_graph(manifest)
+        migration_graph = build_migration_graph(manifest)
+        save_json(graph_to_json(file_graph), out / "file_graph.json")
+        save_json(graph_to_json(macro_graph), out / "macro_graph.json")
+        save_json(graph_to_json(migration_graph), out / "migration_graph.json")
+        save_json(topological_execution_plan(file_graph), out / "execution_plan.json")
+        save_json(parallel_execution_batches(file_graph), out / "parallel_batches.json")
+        save_json(migration_graph_insights(migration_graph, file_graph), out / "graph_insights.json")
+        save_json(impact_report(migration_graph), out / "impact_report.json")
+        save_json(write_translation_visualizations(out, file_graph, macro_graph, migration_graph), out / "graphviz_artifacts.json")
         save_json(build_ecosystem_plan(manifest), out / "ecosystem_plan.json")
         print(f"Saved planning artifacts to {out}")
     elif args.command == "ecosystem-plan":
@@ -121,6 +151,21 @@ def main():
     elif args.command == "saspy-lessons":
         save_json(saspy_mapping_summary(), Path(args.output))
         print(f"Saved SASPy mapping summary to {args.output}")
+    elif args.command == "corpus-test":
+        report = analyze_sas_corpus(
+            Path(args.source_root),
+            Path(args.output_dir),
+            target=args.target,
+            strict=args.strict,
+            large_file_threshold=args.large_file_threshold,
+        )
+        print(f'Analyzed {report["file_count"]} SAS files ({report["total_line_count"]} lines)')
+        print(f'Translated {report["translation_summary"]["translated_count"]} files to {report["target"]}')
+        print(f'Unsupported items: {report["translation_summary"]["total_unsupported"]}')
+        print(f'Corpus report: {Path(args.output_dir) / "corpus_report.json"}')
+        if args.fail_on_errors and report["translation_summary"]["failed_count"]:
+            sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

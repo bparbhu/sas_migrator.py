@@ -49,7 +49,7 @@ docker run --rm ^
 Use `--target pyspark` or `--target databricks` for Spark-oriented output. The
 image installs the package with `spark`, `sasdata`, and `modeling` extras so the
 CLI can support PySpark generation, SAS dataset ingestion, and migration
-planning that routes SAS PROCs to scipy, numpy, scikit-learn, statsmodels, and
+planning that routes SAS PROCs to scipy, numpy, scikit-learn, Spark ML, statsmodels, and
 related packages.
 
 Main command:
@@ -64,7 +64,7 @@ python scripts/convert_sas_folder.py examples/input_repo examples/generated_pand
 ```
 
 That command recursively finds `.sas` files, preserves the same folder structure,
-and writes generated Python plus audit artifacts into the output folder.
+and writes generated Python plus audit artifacts into the output folder, including Graphviz DOT/SVG migration graph visualizations.
 
 Examples:
 - `examples/input_repo` contains a small SAS repository with macros, DB librefs,
@@ -143,7 +143,7 @@ optional SAS-backed baseline validation when a SAS runtime is available.
 
 Planning artifacts include `ecosystem_plan.json`, which classifies SAS PROCs by
 the Python ecosystem target they should map to: pandas, statsmodels,
-scikit-learn, numpy, scipy, PySpark, lifelines, plotting/reporting packages, or manual review.
+scikit-learn, Spark ML, numpy, scipy, PySpark, lifelines, plotting/reporting packages, or manual review.
 They also include `pyspark_plan.json`, which identifies Spark-suitable
 transformations and the corresponding DataFrame API patterns.
 They also include `databricks_plan.json`, which maps SAS platform concepts to
@@ -189,6 +189,8 @@ See `docs/sas_function_numpy_scipy_mapping.md` for SAS function-to-NumPy/SciPy r
 See `docs/sas_to_pyspark_mapping.md` for SAS-to-PySpark routing.
 See `docs/databricks_target.md` for Databricks-specific output guidance.
 See `docs/migration_program_readiness.md` for operating-model readiness guidance.
+See `docs/migration_graph.md` for the NetworkX typed graph, impact, parallel-batch reports, and Graphviz DOT/SVG visualizations.
+See `docs/external_corpus_testing.md` for testing against real SAS code corpora such as `sassoftware/sas-code-examples`.
 See `docs/equivalence_validation.md` for generated-code equivalence testing.
 See `docs/sas_data_ingestion.md` for raw SAS dataset conversion to Parquet.
 See `docs/saspy_lessons.md` for what can and cannot be reused from SASPy.

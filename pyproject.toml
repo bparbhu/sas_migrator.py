@@ -13,10 +13,12 @@ dependencies = [
   "SQLAlchemy>=2.0,<3",
   "pydantic>=2.6,<3",
   "networkx>=3.2,<4",
+  "graphviz>=0.21,<1",
 ]
-optional-dependencies.dev = ["pytest>=8,<9"]
+optional-dependencies.dev = ["pytest>=8,<9", "pytest-timeout>=2.3,<3"]
 optional-dependencies.ci = [
   "pytest>=8,<9",
+  "pytest-timeout>=2.3,<3",
   "build>=1.2,<2",
   "twine>=5,<7",
 ]

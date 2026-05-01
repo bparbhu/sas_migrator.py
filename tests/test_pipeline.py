@@ -3,6 +3,7 @@ import pandas as pd
 from sas_migrator.function_registry import classify_function
 from sas_migrator.imports import build_pandas_imports
 from sas_migrator.pipeline import translate_tree
+from sas_migrator.graph import build_migration_graph, graph_to_json, impact_report, migration_graph_insights, parallel_execution_batches
 from sas_migrator.databricks_emitter import emit_databricks
 from sas_migrator.databricks_plan import build_databricks_plan
 from sas_migrator.proc_registry import build_ecosystem_plan, classify_proc
@@ -23,6 +24,12 @@ def test_translate_tree(tmp_path: Path):
     assert (out / "jobs" / "sql" / "job3.ir.json").exists()
     assert (out / "jobs" / "merge" / "job4.py").exists()
     assert (out / "execution_plan.json").exists()
+    assert (out / "parallel_batches.json").exists()
+    assert (out / "migration_graph.json").exists()
+    assert (out / "graph_insights.json").exists()
+    assert (out / "impact_report.json").exists()
+    assert (out / "graphviz_artifacts.json").exists()
+    assert (out / "graphviz" / "migration_graph.dot").exists()
     assert (out / "ecosystem_plan.json").exists()
     assert (out / "pyspark_plan.json").exists()
     assert (out / "databricks_plan.json").exists()
@@ -146,7 +153,9 @@ def test_parser_builds_ir_for_data_step_and_proc_sql():
 def test_proc_registry_routes_modeling_procs_outside_pandas():
     assert classify_proc("glm").primary_package == "statsmodels"
     assert classify_proc("logistic").fallback_package == "scikit-learn"
+    assert classify_proc("logistic").distributed_package == "Spark ML"
     assert classify_proc("fastclus").primary_package == "scikit-learn"
+    assert classify_proc("fastclus").distributed_package == "Spark ML"
     assert classify_proc("arima").primary_package == "statsmodels"
 
 def test_ecosystem_plan_counts_manifest_procs():
@@ -264,3 +273,77 @@ def test_import_manager_detects_runtime_helpers():
         "    sas_style_merge,",
         ")",
     ]
+
+def test_networkx_migration_graph_models_typed_lineage():
+    manifest = {
+        "root": "example",
+        "files": [
+            {
+                "file_path": "macros/common.sas",
+                "includes": [],
+                "db_librefs": {},
+                "called_macros": [],
+                "datasets_read": [],
+                "datasets_written": [],
+                "procs_used": [],
+            },
+            {
+                "file_path": "jobs/prepare.sas",
+                "includes": ["../macros/common.sas"],
+                "db_librefs": {"dw": "oracle"},
+                "called_macros": ["load_sales"],
+                "datasets_read": ["dw.sales"],
+                "datasets_written": ["work.sales_local"],
+                "procs_used": ["sort"],
+            },
+            {
+                "file_path": "jobs/rollup.sas",
+                "includes": [],
+                "db_librefs": {},
+                "called_macros": [],
+                "datasets_read": ["work.sales_local"],
+                "datasets_written": ["work.sales_rollup"],
+                "procs_used": ["sql"],
+            },
+        ],
+        "macros": {
+            "load_sales": {"file": "macros/common.sas", "params": ["input", "output"]},
+        },
+    }
+
+    graph = build_migration_graph(manifest)
+    graph_json = graph_to_json(graph)
+    node_ids = {node["id"] for node in graph_json["nodes"]}
+    edge_kinds = {edge["kind"] for edge in graph_json["edges"]}
+
+    assert "file:jobs/prepare.sas" in node_ids
+    assert "dataset:work.sales_local" in node_ids
+    assert "macro:load_sales" in node_ids
+    assert "proc:sql" in node_ids
+    assert "libref:dw" in node_ids
+    assert {"includes", "calls_macro", "reads_dataset", "writes_dataset", "uses_proc", "uses_libref"} <= edge_kinds
+
+    insights = migration_graph_insights(graph)
+    assert insights["node_counts"]["file"] == 3
+    assert "dw.sales" in insights["datasets_without_local_producers"]
+
+    impacts = impact_report(graph)["high_impact_nodes"]
+    by_id = {row["id"]: row for row in impacts}
+    assert by_id["macro:load_sales"]["affected_files"] == ["jobs/prepare.sas", "jobs/rollup.sas"]
+    assert by_id["dataset:work.sales_local"]["affected_files"] == ["jobs/rollup.sas"]
+
+
+def test_parallel_batches_report_dag_generations():
+    manifest = {
+        "files": [
+            {"file_path": "a.sas", "includes": [], "datasets_read": [], "datasets_written": ["work.a"]},
+            {"file_path": "b.sas", "includes": [], "datasets_read": ["work.a"], "datasets_written": ["work.b"]},
+            {"file_path": "c.sas", "includes": [], "datasets_read": ["work.a"], "datasets_written": ["work.c"]},
+        ]
+    }
+    from sas_migrator.graph import build_file_graph
+
+    batches = parallel_execution_batches(build_file_graph(manifest))
+    assert batches["is_dag"] is True
+    assert batches["batches"][0] == ["a.sas"]
+    assert set(batches["batches"][1]) == {"b.sas", "c.sas"}

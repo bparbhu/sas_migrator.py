@@ -77,7 +77,7 @@ bash examples/convert_folder_example.sh /path/to/sas_code /path/to/python_output
 
 The output folder preserves the input folder structure and writes one `.py` file
 per `.sas` file, plus `.expanded.sas`, `.ir.json`, `.report.json`, and repository
-level planning reports.
+level planning reports, including NetworkX graph artifacts for lineage, impact analysis, and parallel execution batches.
 
 ## Generate Pandas Output
 

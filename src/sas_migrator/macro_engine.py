@@ -20,7 +20,7 @@ def parse_kv_args(raw: str) -> dict[str, str]:
 
 def substitute_vars(text: str, variables: dict[str, str]) -> str:
     for key, value in variables.items():
-        text = re.sub(rf"&{re.escape(key)}\.?\b", value, text, flags=re.IGNORECASE)
+        text = re.sub(rf"&{re.escape(key)}\.?\b", lambda _: value, text, flags=re.IGNORECASE)
     return text
 
 def eval_simple_condition(cond: str, variables: dict[str, str]):

@@ -26,6 +26,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
 
+      - name: Install Graphviz
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+
       - name: Install package
         run: |
           python -m pip install --upgrade pip
@@ -49,6 +52,8 @@ jobs:
       - name: CLI smoke test
         run: |
           sas-migrator translate-tree examples/input_repo "${RUNNER_TEMP}/translated_pandas" --target pandas --strict
+          test -f "${RUNNER_TEMP}/translated_pandas/graphviz/migration_graph.dot"
+          test -f "${RUNNER_TEMP}/translated_pandas/graphviz/migration_graph.svg"
           sas-migrator translate-tree examples/input_repo "${RUNNER_TEMP}/translated_pyspark" --target pyspark --strict
           sas-migrator translate-tree examples/input_repo "${RUNNER_TEMP}/translated_databricks" --target databricks --strict
 

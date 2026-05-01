@@ -10,14 +10,14 @@ Python packages.
 | --- | --- | --- | --- |
 | Data manipulation | SQL, SORT, TRANSPOSE | pandas, SQLAlchemy | Preserve SAS missing and merge semantics where pandas differs. |
 | Descriptive statistics | FREQ, MEANS, SUMMARY, UNIVARIATE, CORR | pandas, scipy.stats | Use pandas for tables; scipy/statsmodels for tests and p-values. |
-| Preprocessing / imputation | STDIZE | pandas, scikit-learn | `REPONLY` missing replacement can map to pandas fillna or sklearn SimpleImputer. |
+| Preprocessing / imputation | STDIZE | pandas, scikit-learn, Spark ML | `REPONLY` missing replacement can map to pandas fillna, sklearn SimpleImputer, or Spark ML Imputer/StandardScaler. |
 | Numeric and array operations | DATA step functions, IML | numpy, scipy.linalg | Elementwise math, linear algebra, matrix decomposition, and vectorized operations. |
 | Linear models / ANOVA | REG, GLM | statsmodels | Prefer statsmodels over sklearn when parameter estimates, p-values, ANOVA tables, contrasts, or confidence intervals matter. |
-| Logistic / GLM models | LOGISTIC, GENMOD | statsmodels, scikit-learn | statsmodels for SAS-like inference; sklearn for predictive pipelines. |
+| Logistic / GLM models | LOGISTIC, GENMOD | statsmodels, scikit-learn, Spark ML | statsmodels for SAS-like inference; sklearn for local predictive pipelines; Spark ML for distributed predictive training/scoring. |
 | Mixed models | MIXED | statsmodels MixedLM | Covariance structure support must be validated option by option. |
 | Survival analysis | PHREG, LIFETEST | lifelines, scikit-survival | Cox models and Kaplan-Meier workflows. |
 | Time series | ARIMA, ESM, FORECAST | statsmodels | ARIMA/SARIMAX and exponential smoothing need explicit diagnostics and validation. |
-| Machine learning | FASTCLUS, CLUSTER, DISCRIM, PRINCOMP, FACTOR | scikit-learn, factor_analyzer | Predictive modeling and decomposition. |
+| Machine learning | FASTCLUS, CLUSTER, DISCRIM, PRINCOMP, FACTOR | scikit-learn, factor_analyzer, Spark ML | Predictive modeling, clustering, decomposition, and distributed ML alternatives. |
 | Optimization | NLP, OPTMODEL | scipy.optimize, cvxpy | Requires dedicated expression/objective/constraint extraction. |
 | Visualization | SGPLOT, GPLOT | matplotlib, seaborn, plotly | Output target determines static vs interactive choices. |
 | Reporting | REPORT, TABULATE, PRINT | pandas, jinja2, openpyxl | Formatting/export is a reporting concern, not model logic. |
@@ -28,7 +28,7 @@ The converter should classify each PROC before translating:
 
 1. pandas-compatible transformation
 2. statistical inference requiring statsmodels/scipy
-3. predictive ML requiring scikit-learn
+3. predictive ML requiring scikit-learn or Spark ML
 4. survival/time-series/optimization requiring domain packages
 5. reporting/visualization
 6. unsupported/manual review
@@ -42,7 +42,7 @@ a visualization target issue.
 
 - Use `statsmodels` for SAS/STAT style inference because it exposes formula
   models, ANOVA tables, GLM families, regression summaries, and p-values.
-- Use `scikit-learn` for predictive ML pipelines, cross-validation,
+- Use `scikit-learn` for local predictive ML pipelines, cross-validation,
   preprocessing, clustering, classification, and model deployment patterns.
 - Use `scipy.stats` for lower-level statistical tests and distributions.
 - Use `numpy` for elementwise numeric functions, vectorized array expressions,
@@ -53,6 +53,7 @@ a visualization target issue.
 - Use `lifelines` or `scikit-survival` for survival models.
 - Use `statsmodels` time-series modules for ARIMA/SARIMAX and exponential
   smoothing families.
+- Use `Spark ML` through PySpark/Databricks for distributed predictive training, feature pipelines, clustering, PCA, and large-scale scoring when exact SAS/STAT inference tables are not the primary deliverable.
 - Use pandas only when the SAS procedure is fundamentally table manipulation or
   descriptive aggregation.
 

@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from .source_io import read_sas_text
+
 def build_bundle(root: Path, manifest: dict, entry_rel: str) -> dict:
     entry = (root / entry_rel).resolve()
     files_by_path = {Path(f["file_path"]).resolve(): f for f in manifest["files"]}
@@ -16,7 +18,7 @@ def build_bundle(root: Path, manifest: dict, entry_rel: str) -> dict:
                 visit(inc_path)
         db_librefs.update(meta.get("db_librefs", {}))
         let_vars.update(meta.get("let_vars", {}))
-        code_parts.append(path.read_text(encoding="utf-8", errors="ignore"))
+        code_parts.append(read_sas_text(path))
 
     visit(entry)
     return {
