@@ -23,7 +23,7 @@ optional-dependencies.ci = [
   "twine>=5,<7",
 ]
 optional-dependencies.modeling = [
-  "scipy>=1.11,<2",
+  "scipy>=1.17.1,<2",
   "statsmodels>=0.14,<1",
   "scikit-learn>=1.4,<2",
   "lifelines>=0.28,<1",
